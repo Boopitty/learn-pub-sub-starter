@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/Boopitty/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/Boopitty/learn-pub-sub-starter/internal/pubsub"
 	"github.com/Boopitty/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -30,12 +31,46 @@ func main() {
 		return
 	}
 
-	err = pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
-		IsPaused: true,
-	})
-	if err != nil {
-		fmt.Printf("Failed to publishJSON: %v", err)
-		return
+	gamelogic.PrintServerHelp()
+	for {
+		input := gamelogic.GetInput()
+		if len(input) == 0 {
+			continue
+		}
+
+		switch input[0] {
+		case "pause":
+			fmt.Println("Sending 'pause' Message...")
+
+			// publish a pause message in JSON
+			err = pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
+				IsPaused: true,
+			})
+			if err != nil {
+				fmt.Printf("Failed to publishJSON: %v", err)
+				return
+			}
+
+		case "resume":
+			fmt.Println("Sending 'resume' Message...")
+
+			// publish a resume message in JSON
+			err = pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
+				IsPaused: false,
+			})
+			if err != nil {
+				fmt.Printf("Failed to publishJSON: %v", err)
+				return
+			}
+
+		case "quit":
+			fmt.Println("Exiting...")
+
+		default:
+			fmt.Println("Command Not Available")
+			continue
+		}
+		break
 	}
 
 	// wait for ctrl+c to exit
