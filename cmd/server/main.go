@@ -31,6 +31,22 @@ func main() {
 		return
 	}
 
+	// Declare and bind a queue
+	_, _, err = pubsub.DeclareAndBind(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		fmt.Sprintf("%s.%s", routing.GameLogSlug, "*"),
+		pubsub.SimpleQueueType{
+			Durable:   true,
+			Transient: false,
+		},
+	)
+	if err != nil {
+		fmt.Printf("Declare and Bind Failed: %v", err)
+		return
+	}
+
 	gamelogic.PrintServerHelp()
 	for {
 		input := gamelogic.GetInput()
