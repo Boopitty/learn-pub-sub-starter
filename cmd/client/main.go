@@ -31,23 +31,24 @@ func main() {
 		return
 	}
 
-	// Declare and bind a queue
-	_, _, err = pubsub.DeclareAndBind(
+	// Create gamestate
+	gameState := gamelogic.NewGameState(username)
+
+	err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilDirect,
-		fmt.Sprintf("%s.%s", routing.PauseKey, username),
+		fmt.Sprintf("pause.%s", username),
 		routing.PauseKey,
 		pubsub.SimpleQueueType{
 			Durable:   false,
 			Transient: true,
 		},
+		handlerPause(gameState),
 	)
 	if err != nil {
-		fmt.Printf("Declare and Bind Failed: %v", err)
+		fmt.Printf("Failed to subsribe: %v", err)
 		return
 	}
-
-	gameState := gamelogic.NewGameState(username)
 
 	for {
 		input := gamelogic.GetInput()
@@ -94,4 +95,11 @@ func main() {
 	<-signalChan
 
 	fmt.Println("Program shutting down. Closing Connection.")
+}
+
+func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) {
+	return func(ps routing.PlayingState) {
+		defer fmt.Print("> ")
+		gs.HandlePause(ps)
+	}
 }

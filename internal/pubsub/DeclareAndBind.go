@@ -42,5 +42,5 @@ func DeclareAndBind(
 		return nil, amqp.Queue{}, err
 	}
 
-	return nil, queue, nil
+	return channel, queue, nil
 }
