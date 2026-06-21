@@ -47,6 +47,47 @@ func main() {
 		return
 	}
 
+	gameState := gamelogic.NewGameState(username)
+
+	for {
+		input := gamelogic.GetInput()
+		if len(input) == 0 {
+			continue
+		}
+
+		switch input[0] {
+		case "spawn":
+			err = gameState.CommandSpawn(input)
+			if err != nil {
+				fmt.Printf("Failed to Spawn Units: %v\n", err)
+			}
+			continue
+
+		case "move":
+			_, err = gameState.CommandMove(input)
+			if err != nil {
+				fmt.Printf("Failed to Move Units: %v\n", err)
+			}
+			continue
+
+		case "status":
+			gameState.CommandStatus()
+			continue
+
+		case "help":
+			gamelogic.PrintClientHelp()
+			continue
+
+		case "quit":
+			gamelogic.PrintQuit()
+
+		default:
+			fmt.Println("Command Not Available")
+			continue
+		}
+		break
+	}
+
 	// wait for ctrl+c to exit
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)

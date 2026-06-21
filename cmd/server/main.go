@@ -50,6 +50,7 @@ func main() {
 				fmt.Printf("Failed to publishJSON: %v", err)
 				return
 			}
+			continue
 
 		case "resume":
 			fmt.Println("Sending 'resume' Message...")
@@ -62,6 +63,7 @@ func main() {
 				fmt.Printf("Failed to publishJSON: %v", err)
 				return
 			}
+			continue
 
 		case "quit":
 			fmt.Println("Exiting...")
