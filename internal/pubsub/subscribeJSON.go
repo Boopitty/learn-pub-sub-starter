@@ -13,7 +13,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
-	handler func(T),
+	handler func(T) string,
 ) error {
 	channel, queue, err := DeclareAndBind(
 		conn,
@@ -49,12 +49,34 @@ func SubscribeJSON[T any](
 				continue
 			}
 
-			handler(data)
+			ackType := handler(data)
+			switch ackType {
+			case "Ack":
+				fmt.Println("Acknowleging...")
+				err = d.Ack(false)
+				if err != nil {
+					fmt.Printf("Failed to Acknowlege: %v\n", err)
+					continue
+				}
 
-			err = d.Ack(false)
-			if err != nil {
-				fmt.Printf("Failed to Ack: %v\n", err)
-				continue
+			case "NackRequeue":
+				fmt.Println("Negative Acknowlege: Requeueing...")
+				err = d.Nack(false, true)
+				if err != nil {
+					fmt.Printf("Failed NackRequeue: %v\n", err)
+					continue
+				}
+
+			case "NackDiscard":
+				fmt.Println("Negative Acknowlege: Discarding...")
+				err = d.Nack(false, false)
+				if err != nil {
+					fmt.Printf("Failed NackDiscard: %v\n", err)
+					continue
+				}
+
+			default:
+				return
 			}
 		}
 	}()
