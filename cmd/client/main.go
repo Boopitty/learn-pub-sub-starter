@@ -18,16 +18,23 @@ func main() {
 	connStr := "amqp://guest:guest@localhost:5672/"
 	conn, err := amqp.Dial(connStr)
 	if err != nil {
-		fmt.Printf("Connection Failed: %v", err)
+		fmt.Printf("Connection Failed: %v\n", err)
 		return
 	}
 	defer conn.Close()
-	fmt.Println("Connection Successful")
+	fmt.Println("Connection Successful!")
+
+	// Create a channel using the connection
+	channel, err := conn.Channel()
+	if err != nil {
+		fmt.Printf("Error Creating Channel: %v\n", err)
+		return
+	}
 
 	// Username input
 	username, err := gamelogic.ClientWelcome()
 	if err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("Error: %v\n", err)
 		return
 	}
 
@@ -41,13 +48,12 @@ func main() {
 		fmt.Sprintf("%s.%s", routing.PauseKey, username),
 		routing.PauseKey,
 		pubsub.SimpleQueueType{
-			Durable:   false,
-			Transient: true,
+			IsDurable: false,
 		},
 		handlerPause(gameState),
 	)
 	if err != nil {
-		fmt.Printf("Failed to subsribe: %v", err)
+		fmt.Printf("Failed to subsribe: %v\n", err)
 		return
 	}
 
@@ -57,10 +63,20 @@ func main() {
 		fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username),
 		fmt.Sprintf("%s.*", routing.ArmyMovesPrefix),
 		pubsub.SimpleQueueType{
-			Durable:   false,
-			Transient: true,
+			IsDurable: false,
 		},
-		handlerMove(gameState),
+		handlerMove(gameState, channel),
+	)
+
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.WarRecognitionsPrefix,
+		fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix),
+		pubsub.SimpleQueueType{
+			IsDurable: true,
+		},
+		handlerWar(gameState),
 	)
 
 	for {
@@ -78,12 +94,13 @@ func main() {
 			continue
 
 		case "move":
+			// Run .CommandMove() and return an ArmyMove object
 			am, err := gameState.CommandMove(input)
 			if err != nil {
 				fmt.Printf("Failed to Move Units: %v\n", err)
 			}
 
-			channel, err := conn.Channel()
+			// Publish a JSON move message to the exchange.
 			err = pubsub.PublishJSON(
 				channel,
 				routing.ExchangePerilTopic,
@@ -131,13 +148,56 @@ func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) string {
 	}
 }
 
-func handlerMove(gs *gamelogic.GameState) func(gamelogic.ArmyMove) string {
-	return func(am gamelogic.ArmyMove) string {
+func handlerMove(gs *gamelogic.GameState, channel *amqp.Channel) func(gamelogic.ArmyMove) string {
+	return func(move gamelogic.ArmyMove) string {
 		defer fmt.Print("> ")
-		outcome := gs.HandleMove(am)
-		if outcome == gamelogic.MoveOutComeSafe || outcome == gamelogic.MoveOutcomeMakeWar {
+		outcome := gs.HandleMove(move)
+
+		switch outcome {
+		case gamelogic.MoveOutComeSafe:
 			return "Ack"
+
+		case gamelogic.MoveOutcomeMakeWar:
+			err := pubsub.PublishJSON(
+				channel,
+				routing.ExchangePerilTopic,
+				fmt.Sprintf("%s.%s", routing.WarRecognitionsPrefix, move.Player.Username),
+				gamelogic.RecognitionOfWar{
+					Attacker: move.Player,
+					Defender: gs.GetPlayerSnap(),
+				},
+			)
+			if err != nil {
+				return "NackRequeue"
+			}
+			return "Ack"
+
+		default:
+			return "NackDiscard"
+
 		}
-		return "NackDiscard"
+	}
+}
+
+func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) string {
+	return func(rw gamelogic.RecognitionOfWar) string {
+		defer fmt.Print("> ")
+		outcome, _, _ := gs.HandleWar(rw)
+
+		switch outcome {
+		case gamelogic.WarOutcomeNotInvolved:
+			return "NackRequeue"
+		case gamelogic.WarOutcomeNoUnits:
+			return "NackDiscard"
+		case gamelogic.WarOutcomeOpponentWon:
+			return "Ack"
+		case gamelogic.WarOutcomeYouWon:
+			return "Ack"
+		case gamelogic.WarOutcomeDraw:
+			return "Ack"
+		default:
+			fmt.Println("Error handling war: Discarding")
+			return "NackDiscard"
+		}
 	}
 }

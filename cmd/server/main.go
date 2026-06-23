@@ -38,12 +38,11 @@ func main() {
 		routing.GameLogSlug,
 		fmt.Sprintf("%s.%s", routing.GameLogSlug, "*"),
 		pubsub.SimpleQueueType{
-			Durable:   true,
-			Transient: false,
+			IsDurable: true,
 		},
 	)
 	if err != nil {
-		fmt.Printf("Declare and Bind Failed: %v", err)
+		fmt.Printf("Declare and Bind Failed: %v\n", err)
 		return
 	}
 

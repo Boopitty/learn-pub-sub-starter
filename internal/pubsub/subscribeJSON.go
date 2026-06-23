@@ -40,7 +40,7 @@ func SubscribeJSON[T any](
 	}
 
 	go func() {
-		fmt.Println("Running goRoutine...")
+		fmt.Printf("Running goRoutine for %s...\n", queueName)
 		for d := range deliveries {
 			var data T
 			err := json.Unmarshal(d.Body, &data)

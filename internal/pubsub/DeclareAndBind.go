@@ -5,8 +5,7 @@ import (
 )
 
 type SimpleQueueType struct {
-	Durable   bool
-	Transient bool
+	IsDurable bool
 }
 
 func DeclareAndBind(
@@ -26,11 +25,13 @@ func DeclareAndBind(
 	// Declare a new Queue with `.QueueDeclare()`
 	queue, err := channel.QueueDeclare(
 		queueName,
-		queueType.Durable,
-		queueType.Transient,
-		queueType.Transient,
+		queueType.IsDurable,
+		!queueType.IsDurable,
+		!queueType.IsDurable,
 		false,
-		nil,
+		amqp.Table{
+			"x-dead-letter-exchange": "peril_dlx",
+		},
 	)
 	if err != nil {
 		return nil, amqp.Queue{}, err
