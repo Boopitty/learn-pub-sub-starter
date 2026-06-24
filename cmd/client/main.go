@@ -76,7 +76,7 @@ func main() {
 		pubsub.SimpleQueueType{
 			IsDurable: true,
 		},
-		handlerWar(gameState),
+		handlerWar(gameState, channel),
 	)
 
 	for {
@@ -138,66 +138,4 @@ func main() {
 	<-signalChan
 
 	fmt.Println("Program shutting down. Closing Connection.")
-}
-
-func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) string {
-	return func(ps routing.PlayingState) string {
-		defer fmt.Print("> ")
-		gs.HandlePause(ps)
-		return "Ack"
-	}
-}
-
-func handlerMove(gs *gamelogic.GameState, channel *amqp.Channel) func(gamelogic.ArmyMove) string {
-	return func(move gamelogic.ArmyMove) string {
-		defer fmt.Print("> ")
-		outcome := gs.HandleMove(move)
-
-		switch outcome {
-		case gamelogic.MoveOutComeSafe:
-			return "Ack"
-
-		case gamelogic.MoveOutcomeMakeWar:
-			err := pubsub.PublishJSON(
-				channel,
-				routing.ExchangePerilTopic,
-				fmt.Sprintf("%s.%s", routing.WarRecognitionsPrefix, move.Player.Username),
-				gamelogic.RecognitionOfWar{
-					Attacker: move.Player,
-					Defender: gs.GetPlayerSnap(),
-				},
-			)
-			if err != nil {
-				return "NackRequeue"
-			}
-			return "Ack"
-
-		default:
-			return "NackDiscard"
-
-		}
-	}
-}
-
-func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) string {
-	return func(rw gamelogic.RecognitionOfWar) string {
-		defer fmt.Print("> ")
-		outcome, _, _ := gs.HandleWar(rw)
-
-		switch outcome {
-		case gamelogic.WarOutcomeNotInvolved:
-			return "NackRequeue"
-		case gamelogic.WarOutcomeNoUnits:
-			return "NackDiscard"
-		case gamelogic.WarOutcomeOpponentWon:
-			return "Ack"
-		case gamelogic.WarOutcomeYouWon:
-			return "Ack"
-		case gamelogic.WarOutcomeDraw:
-			return "Ack"
-		default:
-			fmt.Println("Error handling war: Discarding")
-			return "NackDiscard"
-		}
-	}
 }

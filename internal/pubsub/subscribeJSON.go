@@ -7,13 +7,14 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+// Subsribe a user to recieve notifications from given queue
 func SubscribeJSON[T any](
 	conn *amqp.Connection,
 	exchange,
 	queueName,
 	key string,
 	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
-	handler func(T) string,
+	handler func(T) string, // handler that returns a "queueType"
 ) error {
 	channel, queue, err := DeclareAndBind(
 		conn,
@@ -41,15 +42,17 @@ func SubscribeJSON[T any](
 
 	go func() {
 		fmt.Printf("Running goRoutine for %s...\n", queueName)
+
+		// Blocks until a delivery is received from the queue
 		for d := range deliveries {
 			var data T
-			err := json.Unmarshal(d.Body, &data)
+			err := json.Unmarshal(d.Body, &data) // Decode the body
 			if err != nil {
 				fmt.Printf("Failed to Unmarshal: %v\n", err)
 				continue
 			}
 
-			ackType := handler(data)
+			ackType := handler(data) // Process the data using the provided handler function
 			switch ackType {
 			case "Ack":
 				fmt.Println("Acknowleging...")
