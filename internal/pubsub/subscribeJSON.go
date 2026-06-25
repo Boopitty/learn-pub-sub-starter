@@ -55,7 +55,6 @@ func SubscribeJSON[T any](
 			ackType := handler(data) // Process the data using the provided handler function
 			switch ackType {
 			case "Ack":
-				fmt.Println("Acknowleging...")
 				err = d.Ack(false)
 				if err != nil {
 					fmt.Printf("Failed to Acknowlege: %v\n", err)
@@ -63,7 +62,6 @@ func SubscribeJSON[T any](
 				}
 
 			case "NackRequeue":
-				fmt.Println("Negative Acknowlege: Requeueing...")
 				err = d.Nack(false, true)
 				if err != nil {
 					fmt.Printf("Failed NackRequeue: %v\n", err)
@@ -71,7 +69,6 @@ func SubscribeJSON[T any](
 				}
 
 			case "NackDiscard":
-				fmt.Println("Negative Acknowlege: Discarding...")
 				err = d.Nack(false, false)
 				if err != nil {
 					fmt.Printf("Failed NackDiscard: %v\n", err)
@@ -79,7 +76,7 @@ func SubscribeJSON[T any](
 				}
 
 			default:
-				return
+				continue
 			}
 		}
 	}()

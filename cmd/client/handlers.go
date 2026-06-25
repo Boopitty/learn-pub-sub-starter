@@ -41,9 +41,11 @@ func handlerMove(gs *gamelogic.GameState, channel *amqp.Channel) func(gamelogic.
 			}
 			return "Ack"
 
+		case gamelogic.MoveOutcomeSamePlayer:
+			fallthrough
+
 		default:
 			return "NackDiscard"
-
 		}
 	}
 }
@@ -116,7 +118,7 @@ func publishGameLog(channel *amqp.Channel, msg, attacker string) error {
 		GameLog,
 	)
 	if err != nil {
-		return nil
+		return err
 	}
 	return nil
 }
