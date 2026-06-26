@@ -57,6 +57,7 @@ func main() {
 		return
 	}
 
+	// Subscribe to ArmyMoves
 	err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilTopic,
@@ -68,6 +69,7 @@ func main() {
 		handlerMove(gameState, channel),
 	)
 
+	// Subscribe to WarReecognition
 	err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilTopic,

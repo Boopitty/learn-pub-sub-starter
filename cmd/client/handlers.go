@@ -13,7 +13,7 @@ func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) string {
 	return func(ps routing.PlayingState) string {
 		defer fmt.Print("> ")
 		gs.HandlePause(ps)
-		return "Ack"
+		return pubsub.Ack
 	}
 }
 
@@ -24,7 +24,7 @@ func handlerMove(gs *gamelogic.GameState, channel *amqp.Channel) func(gamelogic.
 
 		switch outcome {
 		case gamelogic.MoveOutComeSafe:
-			return "Ack"
+			return pubsub.Ack
 
 		case gamelogic.MoveOutcomeMakeWar:
 			err := pubsub.PublishJSON(
@@ -37,15 +37,15 @@ func handlerMove(gs *gamelogic.GameState, channel *amqp.Channel) func(gamelogic.
 				},
 			)
 			if err != nil {
-				return "NackRequeue"
+				return pubsub.NackRequeue
 			}
-			return "Ack"
+			return pubsub.Ack
 
 		case gamelogic.MoveOutcomeSamePlayer:
 			fallthrough
 
 		default:
-			return "NackDiscard"
+			return pubsub.NackDiscard
 		}
 	}
 }
@@ -57,10 +57,10 @@ func handlerWar(gs *gamelogic.GameState, channel *amqp.Channel) func(gamelogic.R
 
 		switch outcome {
 		case gamelogic.WarOutcomeNotInvolved:
-			return "NackRequeue"
+			return pubsub.NackRequeue
 
 		case gamelogic.WarOutcomeNoUnits:
-			return "NackDiscard"
+			return pubsub.NackDiscard
 
 		case gamelogic.WarOutcomeOpponentWon:
 			msg := fmt.Sprintf("%s won a war against %s", winner, loser)
@@ -70,9 +70,9 @@ func handlerWar(gs *gamelogic.GameState, channel *amqp.Channel) func(gamelogic.R
 				rw.Attacker.Username,
 			)
 			if err != nil {
-				return "NackRequeue"
+				return pubsub.NackRequeue
 			}
-			return "Ack"
+			return pubsub.Ack
 
 		case gamelogic.WarOutcomeYouWon:
 			msg := fmt.Sprintf("%s won a war against %s", winner, loser)
@@ -82,9 +82,9 @@ func handlerWar(gs *gamelogic.GameState, channel *amqp.Channel) func(gamelogic.R
 				rw.Attacker.Username,
 			)
 			if err != nil {
-				return "NackRequeue"
+				return pubsub.NackRequeue
 			}
-			return "Ack"
+			return pubsub.Ack
 
 		case gamelogic.WarOutcomeDraw:
 			msg := fmt.Sprintf("A war between %s and %s resulted in a draw", winner, loser)
@@ -94,13 +94,13 @@ func handlerWar(gs *gamelogic.GameState, channel *amqp.Channel) func(gamelogic.R
 				rw.Attacker.Username,
 			)
 			if err != nil {
-				return "NackRequeue"
+				return pubsub.NackRequeue
 			}
-			return "Ack"
+			return pubsub.Ack
 
 		default:
 			fmt.Println("Error handling war: Discarding")
-			return "NackDiscard"
+			return pubsub.NackDiscard
 		}
 	}
 }
