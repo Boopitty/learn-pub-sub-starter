@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 
 	"github.com/Boopitty/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/Boopitty/learn-pub-sub-starter/internal/pubsub"
@@ -88,6 +89,36 @@ func main() {
 		}
 
 		switch input[0] {
+		case "spam":
+			if len(input) < 2 {
+				fmt.Println("Usage: spam <integer>")
+				continue
+			}
+			num, err := strconv.Atoi(input[1])
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				continue
+			}
+
+			for n := 1; n < num; n++ {
+				msg := gamelogic.GetMaliciousLog()
+				log := routing.GameLog{
+					Message: msg,
+				}
+
+				err := pubsub.PublishGob(
+					channel,
+					routing.ExchangePerilTopic,
+					fmt.Sprintf("%s.%s", routing.GameLogSlug, username),
+					log,
+				)
+				if err != nil {
+					fmt.Printf("Failed to publish: %v\n", err)
+					break
+				}
+			}
+			continue
+
 		case "spawn":
 			err = gameState.CommandSpawn(input)
 			if err != nil {

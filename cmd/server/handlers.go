@@ -20,8 +20,6 @@ func unmarshallGameLog() func([]byte) (routing.GameLog, error) {
 		if err != nil {
 			return routing.GameLog{}, err
 		}
-
-		fmt.Printf("decoded log:\n%v\n", gameLog)
 		return gameLog, nil
 	}
 }

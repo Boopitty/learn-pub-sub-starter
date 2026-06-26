@@ -31,21 +31,6 @@ func main() {
 		return
 	}
 
-	// Declare and bind a queue to receive messages from gameLogs
-	_, _, err = pubsub.DeclareAndBind(
-		conn,
-		routing.ExchangePerilTopic,
-		routing.GameLogSlug,
-		fmt.Sprintf("%s.*", routing.GameLogSlug),
-		pubsub.SimpleQueueType{
-			IsDurable: true,
-		},
-	)
-	if err != nil {
-		fmt.Printf("Declare and Bind Failed: %v\n", err)
-		return
-	}
-
 	// Subscribe to gameLog
 	err = pubsub.SubscribeGob(
 		conn,
